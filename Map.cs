@@ -9,13 +9,31 @@ namespace Game
 {
     public class Map
     {
+        public IDictionary<Map.Objects, Map.Objects[]> DroppedItems { get; }
         public readonly Dictionary<Tuple<int, int>, Object> Object = new Dictionary<Tuple<int, int>, Object> { };
-        public enum Objects { Grass, Player, Tree, VioletStone, BrownStone, GreyStone, Bullet}
+        public enum Objects { Grass, Player, Tree, VioletStone, BrownStone, GreyStone, Bullet, Wood, Diamond}
         public byte[,] GameArea { get; private set; }
         public Image MapTexture { get; set; }
         public Map( Image texture)
         {
             MapTexture = texture;
+            DroppedItems = new Dictionary<Map.Objects, Map.Objects[]>()
+            {
+                {Map.Objects.Tree, new[]{Map.Objects.Wood} },
+                {Map.Objects.VioletStone, new[]{Map.Objects.Diamond} },
+            };
+        }
+        public void SpawnRandomDrop(Tuple<int, int> coord)
+        {
+            if (DroppedItems.ContainsKey((Map.Objects)GameArea[coord.Item1, coord.Item2])) {
+                var r = new Random();
+                var destroyedObject = (Map.Objects)GameArea[coord.Item1, coord.Item2];
+                GameArea[coord.Item1, coord.Item2] = (byte)DroppedItems[destroyedObject][r.Next(0, DroppedItems[destroyedObject].Length)];
+            }
+            else
+            {
+                GameArea[coord.Item1, coord.Item2] = (byte)Map.Objects.Grass;
+            }
         }
         public void StateChanged(Location coordinates)
         {
@@ -37,7 +55,12 @@ namespace Game
             {
                 for (int j = 0; j < GameArea.GetLength(1); j++)
                 {
-                    if (i % 275 == 0 && j % 435 == 0) { GameArea[i, j] = (byte)r.Next(2, 6); Object[Tuple.Create(i, j)] = new Object() { HP = 100 }; }
+                    if (i % 300 ==0 && j % 400 == 0 && j != 0 && i != 0) 
+                    { GameArea[i, j] = (byte)r.Next(2, 6); Object[Tuple.Create(i, j)] = new Object() { HP = 100 }; }
+                    else if( i % 350 == 0 && j % 455 == 0 && j != 0 && i != 0)
+                    { GameArea[i, j] = (byte)r.Next(2, 6); Object[Tuple.Create(i, j)] = new Object() { HP = 100 }; }
+                    else if (i % 30 == 0 && j % 55 == 0 && j != 0 && i != 0 && j / 100 < 0 && i / 200 < 0)
+                    { GameArea[i, j] = (byte)r.Next(2, 6); Object[Tuple.Create(i, j)] = new Object() { HP = 100 }; }
                 }
             }
         }

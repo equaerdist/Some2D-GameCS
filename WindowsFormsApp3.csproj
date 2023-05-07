@@ -46,6 +46,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Inventory.cs" />
     <Compile Include="Location.cs" />
     <Compile Include="Object.cs" />
     <Compile Include="Properties\Paths.Designer.cs">

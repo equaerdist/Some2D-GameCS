@@ -23,11 +23,12 @@ namespace Game
         {
             KeyPreview= true;
             DoubleBuffered= true;
+
             var map = new Map(Image.FromFile("./textures/grass.jpg"));
             Action newThread = map.Initialize;
             newThread.BeginInvoke(null, null);
             //map.Initialize();
-            var weapon = new Weapon(400, 200, 20, 300);
+            var weapon = new Weapon(400, 100, 20, 300);
             var physicForWeapon = new Physics(weapon, new Vector(4, 0), 0.5, 10);
             weapon.Physic= physicForWeapon;
             var player = new Player(map, weapon)
@@ -36,17 +37,20 @@ namespace Game
                 Velocity = new Vector(),
                 CurrentTexture = Image.FromFile("./textures/character.png")
             };
-
-           
             player.StateChanged += () =>
             {
                 this.Invalidate();
             };
+            var inventory = new Inventory(player);
+            player.PlayerInventory = inventory;
+
+
             ViewControllers.AddDrawMap(map, this);
             ViewControllers.AddDrawMapEnviroment(map, this, player);
             ViewControllers.AddDrawPlayer(player, this);
             UserController.AddManagingKeys(this, player);
             ViewControllers.AddProcessedTextures(player, this);
+            ViewControllers.AddDrawPlayerInterface(player, this);
         }
     }
 }

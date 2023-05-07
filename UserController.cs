@@ -63,7 +63,7 @@ namespace Game
                             }
                             break;
                     }
-                }
+            }
             };
             window.KeyDown += (s, e) =>
             {
@@ -84,7 +84,7 @@ namespace Game
                         player.CurrentWeapon.ShotLastTime = DateTime.Now;
                         b.BeginInvoke(window, null, null);
                     }
-                  }
+                }
             };
             window.KeyDown += (s, e) =>
             {

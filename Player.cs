@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using static System.Net.Mime.MediaTypeNames;
 using static System.Windows.Forms.AxHost;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using Image = System.Drawing.Image;
 using Timer = System.Windows.Forms.Timer;
 
@@ -18,6 +19,7 @@ namespace Game
 {
     public class Player
     {
+        public Inventory PlayerInventory { get; set; }
         private  double _absoluteAmountXOffset;
         private  double _absoluteAmountYOffset;
         public  double AbsoluteAmountYOffset
@@ -83,6 +85,7 @@ namespace Game
             var startY = currentLocation.Y - 42 < 0 ? 0 : currentLocation.Y - 42;
             var endY = currentLocation.Y + 42 >= map.GetLength(0) ? map.GetLength(0) :
                 currentLocation.Y + 42;
+
             while (counter != CurrentWeapon.Range && (int)(currentLocation.X + counter * switcher) != edge)
             {
                 for(int i = (int)startY; i < (int)endY;i++)
@@ -104,6 +107,38 @@ namespace Game
             }
             return (false, 0, switcher == -1 ? Direction.Left : Direction.Right, Tuple.Create(0, 0));
         }
+        private void ShowDamagedItemHp((bool Exists, int Range, Direction direction, Tuple<int, int>) result, MyFrom window)
+        {
+            if (result.Exists)
+            {
+
+                if (CurrentMap.Object.ContainsKey(result.Item4))
+                {
+                    var damage = CurrentWeapon.Physic.FinallyDamage(result.Range);
+                    CurrentMap.Object[result.Item4].HP -= damage;
+                    if (CurrentMap.Object[result.Item4].HP == 0)
+                    {
+                        
+                            CurrentMap.Object.Remove(result.Item4);
+                            CurrentMap.SpawnRandomDrop(result.Item4);
+                    }
+                    else
+                    {
+                        window.BeginInvoke(new Action(() =>
+                        {
+                            ViewControllers.ShowHp(window, this, CurrentMap, result.Item4);
+                        }));
+                        StateChanged();
+                    }
+                }
+            }
+        }
+        private void takeItem(Tuple<int, int> coord)
+        {
+            var temp = new Random();
+            PlayerInventory.Add(Tuple.Create(temp.Next(2, 6), (Map.Objects)CurrentMap.GameArea[coord.Item1, coord.Item2]));
+            CurrentMap.GameArea[coord.Item1, coord.Item2] = (byte)Map.Objects.Grass;
+        }
         public void MakeShoot(MyFrom window)
         {
             var map = CurrentMap.GameArea;
@@ -121,52 +156,32 @@ namespace Game
                 CurrentWeapon.Physic.VelocityIntervalInMillisecond;
             var lastDate = DateTime.Now;
             var bulletLocationX = currentLocation.X + 4 * switcher;
-            while (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond  < expectedTime)
+            try
             {
-               
-                    if (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond > 
+                while (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond < expectedTime)
+                {
+
+                    if (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond >
                         lastDate.Ticks / TimeSpan.TicksPerMillisecond + CurrentWeapon.Physic.VelocityIntervalInMillisecond)
                     {
-                 
+
                         map[(int)currentLocation.Y, (int)bulletLocationX] = (byte)Map.Objects.Grass;
                         bulletLocationX += CurrentWeapon.Physic.Velocity.X * switcher;
                         map[(int)currentLocation.Y, (int)bulletLocationX] = (byte)Map.Objects.Bullet;
                         lastDate = DateTime.Now;
                         StateChanged();
                     }
+                }
+                if ((int)bulletLocationX >= map.GetLength(0))
+                    map[(int)currentLocation.Y, (int)(bulletLocationX -
+                     CurrentWeapon.Physic.Velocity.X * switcher)] = (byte)Map.Objects.Grass;
+                else
+                    map[(int)currentLocation.Y, (int)bulletLocationX] = (byte)Map.Objects.Grass;
             }
-            if((int)bulletLocationX >= map.GetLength(0))
-                map[(int)currentLocation.Y, (int)(bulletLocationX - 
-                 CurrentWeapon.Physic.Velocity.X * switcher)] = (byte)Map.Objects.Grass; 
-            else
-                map[(int)currentLocation.Y, (int)bulletLocationX] = (byte)Map.Objects.Grass;
-            if(result.Exists)
-            {
-
-                    if (CurrentMap.Object.ContainsKey(result.Item4))
-                    {
-                    var damage = CurrentWeapon.Physic.FinallyDamage(result.Range);
-                    CurrentMap.Object[result.Item4].HP -= damage;
-                        if (CurrentMap.Object[result.Item4].HP == 0)
-                        {
-                            lock (CurrentMap.Object)
-                            {
-                                CurrentMap.Object.Remove(result.Item4);
-                                CurrentMap.GameArea[result.Item4.Item1, result.Item4.Item2] = (byte)Map.Objects.Grass;
-                            }
-                        }
-                        else
-                        {
-                            window.BeginInvoke(new Action(() =>
-                            {
-                                ViewControllers.ShowHp(window, this, CurrentMap, result.Item4);
-                            }));
-                        StateChanged();
-                        }
-                    }
-            }
+            catch { return; }
+            ShowDamagedItemHp(result, window);
         }
-        private bool IndexNotOutOfRange()
+        private bool indexNotOutOfRange()
         {
             if (((int)Location.Y + (int)Velocity.Y < CurrentMap.GameArea.GetLength(0) - 0.5) &&
                     ((int)Location.X + (int)Velocity.X < CurrentMap.GameArea.GetLength(1) - 2) &&
@@ -176,14 +191,14 @@ namespace Game
 
             
             }
-        private bool checkCollisionThrowY()
+        private (bool Exists, Tuple<int, int> coord) checkCollisionThrowY()
         {
             var mp = CurrentMap;
             bool reverse = !(Velocity.Y > 0);
             int sticher = Velocity.Y > 0 ? 1 : -1;
             var counter = sticher == 1 ? 1 : -1;
             var edge = Velocity.Y > 0 ? mp.GameArea.GetLength(0) : 0;
-            while (counter + (int)Location.Y != edge && counter != 40 * sticher)
+            while ((int)(counter + Location.Y) != edge && counter != 40 * sticher)
             {
                 var startX = Location.X - 50 < 0 ? 0 : Location.X - 50;
                 var endX = Location.X + 40 > mp.GameArea.GetLength(0) - 1 
@@ -192,21 +207,27 @@ namespace Game
                 {
                     try
                     {
-                        if (mp.GameArea[(int)counter + (int)Location.Y, i] != 0 )
+                        if (mp.GameArea[(int)(counter + Location.Y), i] != 0 &&
+                            (Map.Objects)mp.GameArea[i, (int)(counter + Location.X)] >= Map.Objects.Wood &&
+                            (Map.Objects)mp.GameArea[i, (int)(counter + Location.X)] <= Map.Objects.Diamond)
                         {
-                            return false;
+                            return (false, Tuple.Create((int)(counter + Location.Y), i));
+                        }
+                        else if (mp.GameArea[i, (int)(counter + Location.Y)] != 0)
+                        {
+                            return (false, Tuple.Create(0, 0));
                         }
                     }
                     catch
                     {
-                        return false;
+                        return (false, Tuple.Create(0, 0));
                     }
                 }
                 if (reverse) { counter--; } else counter++;
             }
-            return true;
+            return (true, Tuple.Create(0, 0));
         }
-        private bool checkColissionThrowX()
+        private (bool Exists, Tuple<int, int> coord) checkColissionThrowX()
         {
             var mp = CurrentMap;
             int switcher = Velocity.X > 0 ? 1 : -1;
@@ -222,26 +243,42 @@ namespace Game
                 {
                     try
                     {
-                        if (mp.GameArea[i, (int)counter + (int)Location.X] != 0)
+                        if (mp.GameArea[i, (int)(counter + Location.X)] != 0 && 
+                            (Map.Objects)mp.GameArea[i, (int)(counter + Location.X)] >= Map.Objects.Wood &&
+                            (Map.Objects)mp.GameArea[i, (int)(counter + Location.X)] <= Map.Objects.Diamond)
                         {
-                            return false;
+                            return (false, Tuple.Create(i, (int)(counter + Location.X)));
+                        }
+                        else if (mp.GameArea[i, (int)(counter + Location.X)] != 0)
+                        {
+                            return (false, Tuple.Create(0, 0));
                         }
                     }
                     catch
                     {
-                        return false;
+                        Location.X -= Velocity.X;
+                        return (false, Tuple.Create(0, 0));
                     }
                 }
                 if (reverse) { counter--; } else counter++;
             }
-            return true;
+            return (true, Tuple.Create(0, 0));
         }
         private bool checkCollision(Tools.Axe axe)
         {
-            if (IndexNotOutOfRange())
+            if (indexNotOutOfRange())
             {
-                if (axe == Tools.Axe.Y) return checkCollisionThrowY();
-                else if (axe == Tools.Axe.X) return checkColissionThrowX();
+
+                if (axe == Tools.Axe.Y)
+                {
+                    var result = checkCollisionThrowY();
+                    if (!result.Exists && result.coord.Item1 != 0 && result.coord.Item2 != 0) takeItem(result.coord); return result.Exists;
+                }
+                else if (axe == Tools.Axe.X)
+                {
+                    var result = checkColissionThrowX();
+                    if (!result.Exists && result.coord.Item1 != 0 && result.coord.Item2 != 0) takeItem(result.coord); return result.Exists;
+                }
             }
             return false;
         }
