@@ -9,14 +9,39 @@ namespace Game
 {
     public static class UserController
     {
-        public static DateTime LastPressTime = DateTime.Now;
-        public static void AddManagingKeys(MyFrom window, Player player)
+        public static DateTime LastPressWASDTime = DateTime.Now;
+        public static DateTime LastPressInventoryTime = DateTime.Now;
+        public static DateTime LastCallInterface = DateTime.Now;
+        public static void AddInterfaceManagingKeys(Interface playerInterface)
+        {
+            playerInterface.Window.KeyDown += (s, e) =>
+            {
+                switch(e.KeyCode)
+                {
+                    case System.Windows.Forms.Keys.I:
+                        if((DateTime.Now - LastPressInventoryTime).TotalMilliseconds > 300)
+                        {
+                            LastPressInventoryTime= DateTime.Now;
+                            playerInterface.Player.PlayerInventory.Show(playerInterface.Window);
+                        }
+                        break;
+                    case System.Windows.Forms.Keys.F10:
+                        if ((DateTime.Now - LastCallInterface).Milliseconds > 300)
+                        {
+                            playerInterface.HideOrShow();
+                            LastCallInterface = DateTime.Now;
+                        }
+                        break;
+                }
+            };
+        }
+        public static void AddPlayerManagingKeys(MyFrom window, Player player)
         {
             window.KeyDown += (s, e) =>
             {
-                if ((DateTime.Now - LastPressTime).TotalMilliseconds > 100)
+                if ((DateTime.Now - LastPressWASDTime).TotalMilliseconds > 100)
                 {
-                    LastPressTime = DateTime.Now;
+                    LastPressWASDTime = DateTime.Now;
                     Tools.Axe temp = Tools.Axe.Y;
                     switch (e.KeyCode)
                     {
@@ -98,6 +123,8 @@ namespace Game
                     }
                 }
             };
+
+
             window.KeyUp += (s, e) =>
             {
                 if (e.KeyCode == System.Windows.Forms.Keys.ShiftKey) player.SpeedMode = Player.Mode.Slow;

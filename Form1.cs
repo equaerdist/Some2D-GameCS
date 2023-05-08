@@ -21,9 +21,13 @@ namespace Game
         public Timer timer { get; set; }
         public MyFrom()
         {
+            this.SizeChanged += (s, e) =>
+            {
+                Invalidate();
+            };
             KeyPreview= true;
             DoubleBuffered= true;
-
+            Size = new Size(600, 600);
             var map = new Map(Image.FromFile("./textures/grass.jpg"));
             Action newThread = map.Initialize;
             newThread.BeginInvoke(null, null);
@@ -43,14 +47,17 @@ namespace Game
             };
             var inventory = new Inventory(player);
             player.PlayerInventory = inventory;
-
-
+            var playerInterface = new Interface(
+                ViewControllers.ProccessedElements.Heart, 
+                this, 
+                player);
             ViewControllers.AddDrawMap(map, this);
             ViewControllers.AddDrawMapEnviroment(map, this, player);
             ViewControllers.AddDrawPlayer(player, this);
-            UserController.AddManagingKeys(this, player);
+            UserController.AddPlayerManagingKeys(this, player);
             ViewControllers.AddProcessedTextures(player, this);
-            ViewControllers.AddDrawPlayerInterface(player, this);
+            UserController.AddInterfaceManagingKeys(playerInterface);
+            playerInterface.HideOrShow();
         }
     }
 }

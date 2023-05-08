@@ -107,7 +107,7 @@ namespace Game
             }
             return (false, 0, switcher == -1 ? Direction.Left : Direction.Right, Tuple.Create(0, 0));
         }
-        private void ShowDamagedItemHp((bool Exists, int Range, Direction direction, Tuple<int, int>) result, MyFrom window)
+        private void DifferHP((bool Exists, int Range, Direction direction, Tuple<int, int>) result, MyFrom window)
         {
             if (result.Exists)
             {
@@ -126,7 +126,7 @@ namespace Game
                     {
                         window.BeginInvoke(new Action(() =>
                         {
-                            ViewControllers.ShowHp(window, this, CurrentMap, result.Item4);
+                            ViewControllers.ShowMapObjectsHp(window, this, CurrentMap, result.Item4);
                         }));
                         StateChanged();
                     }
@@ -139,19 +139,18 @@ namespace Game
             PlayerInventory.Add(Tuple.Create(temp.Next(2, 6), (Map.Objects)CurrentMap.GameArea[coord.Item1, coord.Item2]));
             CurrentMap.GameArea[coord.Item1, coord.Item2] = (byte)Map.Objects.Grass;
         }
-        public void MakeShoot(MyFrom window)
+        private void BulletAnimationOn2DArray(Vector currentLocation,
+            (bool Exists, int Range, Direction direction, Tuple<int, int>) result)
         {
             var map = CurrentMap.GameArea;
-            var currentLocation = new Vector(Location.X, Location.Y + 15 * window.Height / 600);
-            var result = checkObjectsThrowX(currentLocation);
             var relativeDestination = result.Exists ? result.Range : CurrentWeapon.Range;
             var edge = result.direction == Direction.Left ? 0 : map.GetLength(0);
             var switcher = result.direction == Direction.Left ? -1 : 1;
-            if (switcher == -1 && (int)(Location.X - relativeDestination) < edge) 
+            if (switcher == -1 && (int)(Location.X - relativeDestination) < edge)
                 relativeDestination = (int)Location.X;
-            if (switcher == 1 && (int)(Location.X + relativeDestination) > map.GetLength(0)) 
+            if (switcher == 1 && (int)(Location.X + relativeDestination) > map.GetLength(0))
                 relativeDestination = (int)(map.GetLength(0) - (int)Location.X);
-            var expectedTime = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond + relativeDestination / 
+            var expectedTime = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond + relativeDestination /
                 CurrentWeapon.Physic.Velocity.X *
                 CurrentWeapon.Physic.VelocityIntervalInMillisecond;
             var lastDate = DateTime.Now;
@@ -179,7 +178,13 @@ namespace Game
                     map[(int)currentLocation.Y, (int)bulletLocationX] = (byte)Map.Objects.Grass;
             }
             catch { return; }
-            ShowDamagedItemHp(result, window);
+        }
+        public void MakeShoot(MyFrom window)
+        {
+            var currentLocation = new Vector(Location.X, Location.Y + 15 * window.Height / 600);
+            var result = checkObjectsThrowX(currentLocation);
+            BulletAnimationOn2DArray(currentLocation, result);
+            DifferHP(result, window);
         }
         private bool indexNotOutOfRange()
         {
@@ -201,8 +206,8 @@ namespace Game
             while ((int)(counter + Location.Y) != edge && counter != 40 * sticher)
             {
                 var startX = Location.X - 50 < 0 ? 0 : Location.X - 50;
-                var endX = Location.X + 40 > mp.GameArea.GetLength(0) - 1 
-                    ? mp.GameArea.GetLength(0) : Location.X + 40;
+                var endX = Location.X + 50 > mp.GameArea.GetLength(0) - 1 
+                    ? mp.GameArea.GetLength(0) : Location.X + 50;
                 for (int i = (int)startX; i < (int)endX; i++)
                 {
                     try

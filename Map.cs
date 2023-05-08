@@ -50,7 +50,7 @@ namespace Game
         public void Initialize()
         {
             var r = new Random();
-            GameArea = new byte[1800, 1800];
+            GameArea = new byte[3600, 3600];
             for (int i = 0; i < GameArea.GetLength(0); i++)
             {
                 for (int j = 0; j < GameArea.GetLength(1); j++)
@@ -59,7 +59,7 @@ namespace Game
                     { GameArea[i, j] = (byte)r.Next(2, 6); Object[Tuple.Create(i, j)] = new Object() { HP = 100 }; }
                     else if( i % 350 == 0 && j % 455 == 0 && j != 0 && i != 0)
                     { GameArea[i, j] = (byte)r.Next(2, 6); Object[Tuple.Create(i, j)] = new Object() { HP = 100 }; }
-                    else if (i % 30 == 0 && j % 55 == 0 && j != 0 && i != 0 && j / 100 < 0 && i / 200 < 0)
+                    else if (i % 10 == 0 && j % 20 == 0 && j != 0 && i != 0 && j / 100 < 0 && i / 200 < 0)
                     { GameArea[i, j] = (byte)r.Next(2, 6); Object[Tuple.Create(i, j)] = new Object() { HP = 100 }; }
                 }
             }
