@@ -50,6 +50,15 @@ namespace Game
                     offset += 20 * Window.Width / 600;
                 }
             };
+            Functions["ShowPlayerEnergy"] = (sender, args) =>
+            {
+                var g = args.Graphics;
+               g.FillRectangle(Brushes.Black, 10 * Window.Width / 600, 30 * window.Height / 600, 100 * window.Width/ 600,
+                   15 * window.Height / 600);
+                g.FillRectangle(Brushes.Blue, 10 * Window.Width / 600, 
+                    30 * window.Height / 600, 100 * window.Width / 600 * Player.Energy / 100,
+                   15 * window.Height / 600);
+            };
         }
     }
 }

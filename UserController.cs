@@ -51,8 +51,8 @@ namespace Game
                                 player.inAction = true;
                                 player.Velocity = new Vector(player.Velocity.X, -2.5);
                                 temp = Tools.Axe.Y;
-                                Action<Tools.Axe, MyFrom> temporaryW = player.DoStep;
-                                temporaryW.BeginInvoke(temp, window, null, null);
+                                Action<Tools.Axe> temporaryW = player.DoStep;
+                                temporaryW.BeginInvoke(temp,null, null);
                             }
                             break;
                         case System.Windows.Forms.Keys.S:
@@ -61,8 +61,8 @@ namespace Game
                                 player.inAction = true;
                                 player.Velocity = new Vector(player.Velocity.X, 2.5);
                                 temp = Tools.Axe.Y;
-                                Action<Tools.Axe, MyFrom> temporaryS = player.DoStep;
-                                temporaryS.BeginInvoke(temp, window, null, null);
+                                Action<Tools.Axe> temporaryS = player.DoStep;
+                                temporaryS.BeginInvoke(temp, null, null);
                             }
                             break;
                         case System.Windows.Forms.Keys.A:
@@ -72,8 +72,8 @@ namespace Game
                                 player.Velocity = new Vector(-2.5, player.Velocity.Y);
                                 player.CurrentDirection = Player.Direction.Left;
                                 temp = Tools.Axe.X;
-                                Action<Tools.Axe, MyFrom> temporaryA = player.DoStep;
-                                temporaryA.BeginInvoke(temp, window, null, null);
+                                Action<Tools.Axe> temporaryA = player.DoStep;
+                                temporaryA.BeginInvoke(temp, null, null);
                             }
                             break;
                         case System.Windows.Forms.Keys.D:
@@ -83,8 +83,8 @@ namespace Game
                                 player.Velocity = new Vector(2.5, player.Velocity.Y);
                                 player.CurrentDirection = Player.Direction.Right;
                                 temp = Tools.Axe.X;
-                                Action<Tools.Axe, MyFrom> temporaryD = player.DoStep;
-                                temporaryD.BeginInvoke(temp, window, null, null);
+                                Action<Tools.Axe> temporaryD = player.DoStep;
+                                temporaryD.BeginInvoke(temp, null, null);
                             }
                             break;
                     }
@@ -94,7 +94,7 @@ namespace Game
             {
                 if (e.KeyCode == System.Windows.Forms.Keys.ShiftKey)
                 {
-                    if (player.SpeedMode == Player.Mode.Slow)
+                    if (player.SpeedMode == Player.Mode.Slow && player.Energy > 0)
                     {
                         player.inAction = true;
                         player.SpeedMode = Player.Mode.Fast;

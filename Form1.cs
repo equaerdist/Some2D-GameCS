@@ -35,7 +35,7 @@ namespace Game
             var weapon = new Weapon(400, 100, 20, 300);
             var physicForWeapon = new Physics(weapon, new Vector(4, 0), 0.5, 10);
             weapon.Physic= physicForWeapon;
-            var player = new Player(map, weapon)
+            var player = new Player(map, weapon, 0.2)
             {
                 Location = new Vector(ClientSize.Width / 2, ClientSize.Height / 2),
                 Velocity = new Vector(),

@@ -19,9 +19,15 @@ namespace Game
 {
     public class Player
     {
+        private double powerConsumptionPerOneCeil;
+
         public Inventory PlayerInventory { get; set; }
+
         private  double _absoluteAmountXOffset;
+
         private  double _absoluteAmountYOffset;
+
+
         public  double AbsoluteAmountYOffset
         {
             get
@@ -38,6 +44,8 @@ namespace Game
                 }
             }
         }
+
+
         public double AbsoluteAmountXOffset
         {
             get
@@ -52,19 +60,44 @@ namespace Game
             }
         }
         public HealthPoint HP { get; set; }
-        public int Energy { get; set; }
+
+        public int Energy { get; private set; }
+
         private Func<int, Timer> createTimer;
+
         public enum Mode { Slow, Fast };
+
         public bool inAction { get; set; }
+
         public enum Direction { Left, Right, Up, Down };
+
         public Direction CurrentDirection { get; set; }
+
         public Vector Location { get; set; }
+
         public Weapon CurrentWeapon { get; set; }
+
         public Vector Velocity { get; set; }
+
         public Mode SpeedMode { get; set; }
+
         public enum HealthPoint { VeryLow, Low, Middle, Good, VeryGood};
+
         public Map CurrentMap { get; }
-        public Player(Map map,Weapon weapon)
+
+        private void AddEnergy()
+        {
+            Energy = 100;
+            var timer = createTimer(100);
+            timer.Tick += (s, e) =>
+            {
+                if (SpeedMode == Mode.Slow) Energy += 1;
+                if (Energy > 100) Energy = 100;
+                StateChanged();
+            };
+            timer.Start();
+        }
+        public Player(Map map,Weapon weapon, double energyconsumption)
         {
             HP = HealthPoint.VeryGood;
             createTimer = (time) => { return new Timer() { Interval = time }; };
@@ -73,9 +106,14 @@ namespace Game
             CurrentMap = map;
             CurrentDirection = Direction.Right;
             CurrentWeapon = weapon;
+            powerConsumptionPerOneCeil = energyconsumption;
+            AddEnergy();
         }
         public Image CurrentTexture { get; set; }
+
         public event Action StateChanged;
+
+        private Dictionary<string, Timer> timers = new Dictionary<string, Timer>();
         private (bool Exists , int Range, Direction direction, Tuple<int, int>) checkObjectsThrowX(Vector currentLocation)
         {
             var map = CurrentMap.GameArea;
@@ -107,6 +145,8 @@ namespace Game
             }
             return (false, 0, switcher == -1 ? Direction.Left : Direction.Right, Tuple.Create(0, 0));
         }
+
+
         private void DifferHP((bool Exists, int Range, Direction direction, Tuple<int, int>) result, MyFrom window)
         {
             if (result.Exists)
@@ -133,12 +173,16 @@ namespace Game
                 }
             }
         }
+
+
         private void takeItem(Tuple<int, int> coord)
         {
             var temp = new Random();
             PlayerInventory.Add(Tuple.Create(temp.Next(2, 6), (Map.Objects)CurrentMap.GameArea[coord.Item1, coord.Item2]));
             CurrentMap.GameArea[coord.Item1, coord.Item2] = (byte)Map.Objects.Grass;
         }
+
+
         private void BulletAnimationOn2DArray(Vector currentLocation,
             (bool Exists, int Range, Direction direction, Tuple<int, int>) result)
         {
@@ -179,6 +223,8 @@ namespace Game
             }
             catch { return; }
         }
+
+
         public void MakeShoot(MyFrom window)
         {
             var currentLocation = new Vector(Location.X, Location.Y + 15 * window.Height / 600);
@@ -186,6 +232,8 @@ namespace Game
             BulletAnimationOn2DArray(currentLocation, result);
             DifferHP(result, window);
         }
+
+
         private bool indexNotOutOfRange()
         {
             if (((int)Location.Y + (int)Velocity.Y < CurrentMap.GameArea.GetLength(0) - 0.5) &&
@@ -196,6 +244,8 @@ namespace Game
 
             
             }
+
+
         private (bool Exists, Tuple<int, int> coord) checkCollisionThrowY()
         {
             var mp = CurrentMap;
@@ -232,6 +282,8 @@ namespace Game
             }
             return (true, Tuple.Create(0, 0));
         }
+
+
         private (bool Exists, Tuple<int, int> coord) checkColissionThrowX()
         {
             var mp = CurrentMap;
@@ -287,7 +339,37 @@ namespace Game
             }
             return false;
         }
-        public void DoStep(Tools.Axe axis, MyFrom window)
+
+
+        private void SetDefaultPosition()
+        {
+            if (Velocity.X == 0)
+            {
+                Image temporaryCache = Image.FromFile($"./textures/character.png");
+                if (CurrentDirection == Direction.Left) temporaryCache.RotateFlip(RotateFlipType.RotateNoneFlipX);
+                CurrentTexture = temporaryCache;
+                StateChanged();
+            }
+        }
+
+
+        private void countNewEnergy(Tools.Axe axe)
+        {
+            if (SpeedMode == Mode.Fast)
+            {
+                var value = axe == Tools.Axe.X ? Velocity.X : Velocity.Y;
+                Energy -= (int)(Math.Abs(value) * powerConsumptionPerOneCeil) + 1;
+                if (Energy <= 0)
+                {
+                    Energy = 0;
+                    SpeedMode = Mode.Slow;
+                }
+                StateChanged();
+            }
+        }
+
+
+        public void DoStep(Tools.Axe axis)
         {
             var counter = 1;
             var lastDate = DateTime.Now;
@@ -309,7 +391,7 @@ namespace Game
                         if (Location.Y - 200 -  AbsoluteAmountYOffset < 0 || 
                             Location.Y - AbsoluteAmountYOffset + 200 >= 600)
                             AbsoluteAmountYOffset = Location.Y + 200 - 600;
-
+                        countNewEnergy(axis);
                         Thread.Sleep(100);
                     }
                     break;
@@ -337,17 +419,12 @@ namespace Game
                         }
                         if (Location.X  - 200 - AbsoluteAmountXOffset < 0 || Location.X + 200 - AbsoluteAmountXOffset >= 600)
                             AbsoluteAmountXOffset = Location.X + 200 - 600;
+                        countNewEnergy(axis);
                         Thread.Sleep(50);
                     }
                     break;
             }
-            if (Velocity.X == 0)
-            {
-                Image temporaryCache = Image.FromFile($"./textures/character.png");
-                if (CurrentDirection == Direction.Left) temporaryCache.RotateFlip(RotateFlipType.RotateNoneFlipX);
-                CurrentTexture = temporaryCache;
-            }
-            StateChanged();
+            SetDefaultPosition();
         }
     }
 }
