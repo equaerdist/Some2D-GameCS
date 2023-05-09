@@ -7,11 +7,92 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace Game
 {
     public static class ViewControllers
     {
+        private readonly static int ceilToPixel = 1;
+        private readonly static int defaultWindowWidth = 600;
+        private readonly static int defaultWindowHeight = 600;
+        private static double offsetForDrop = Math.Sin(DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond);
+        private static Timer UpdateDropOffset;
+        static ViewControllers()
+        {
+            UpdateDropOffset = new Timer() { Interval = 1 };
+            UpdateDropOffset.Tick += (s, e) =>
+            { offsetForDrop = Math.Sin(DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond); };
+            UpdateDropOffset.Start();
+        }
+        public static void CountNewXOffset(Player player, MyFrom window)
+        {
+            if (player.Location.X - 200 - player.AbsoluteAmountXOffset < 0 ||
+                            player.Location.X + 200 - player.AbsoluteAmountXOffset >= window.Width / ViewControllers.ScaleCoefficent)
+                player.AbsoluteAmountXOffset = player.Location.X + 200 - window.Width / ViewControllers.ScaleCoefficent;
+        }
+        public static void CountNewYOffset(Player player, MyFrom window)
+        {
+            if (player.Location.Y - 200 - player.AbsoluteAmountYOffset < 0 ||
+                            player.Location.Y - player.AbsoluteAmountYOffset + 200 >= window.Height / ViewControllers.ScaleCoefficent)
+                player.AbsoluteAmountYOffset = player.Location.Y + 200 - window.Height / ViewControllers.ScaleCoefficent;
+        }
+        public static Bitmap RenderOnOtherThread(Map map, MyFrom window, Player player)
+        {
+            var result = Tools.CountVisibleFar(player, window, map);
+            var bitmap = new Bitmap(window.Width, window.Height);
+            using (var g = Graphics.FromImage(bitmap))
+            {
+                for (int i = result.startY; i < result.endY; i++)
+                {
+                    for (int j = result.startX; j < result.endX; j++)
+                    {
+                        if (Models.ContainsKey((Map.Objects)map.GameArea[i, j])
+                        && (Map.Objects)map.GameArea[i, j] != Map.Objects.Grass
+                        && (Map.Objects)map.GameArea[i, j] != Map.Objects.Player
+                        && (Map.Objects)map.GameArea[i, j] != Map.Objects.Wood
+                        && (Map.Objects)map.GameArea[i, j] != Map.Objects.Diamond)
+                        {
+
+                            g.FillEllipse(Brushes.Black, (int)(j - (float)player.AbsoluteAmountXOffset) * ScaleCoefficent,
+                             (int)(i - (float)player.AbsoluteAmountYOffset + 45) * ScaleCoefficent,
+                             50 * ScaleCoefficent,
+                             10 * ScaleCoefficent);
+                            g.DrawImage(Models[(Map.Objects)map.GameArea[i, j]],
+                                        (int)(j - (float)player.AbsoluteAmountXOffset) * ScaleCoefficent,
+                                       (int)(i - (float)player.AbsoluteAmountYOffset) * ScaleCoefficent,
+                                        50 * ScaleCoefficent,
+                                        50 * ScaleCoefficent);
+
+                        }
+                        else if ((Map.Objects)map.GameArea[i, j] == Map.Objects.Bullet)
+                        {
+                            var trackerSize = 14;
+
+                            g.DrawLine(new Pen(Brushes.Red, 4 * ScaleCoefficent),
+                              (int)(j - (float)player.AbsoluteAmountXOffset) * ScaleCoefficent,
+                                (int)(i - (float)player.AbsoluteAmountYOffset) * ScaleCoefficent,
+                                (int)(j - (float)player.AbsoluteAmountXOffset + trackerSize) * ScaleCoefficent,
+                                (int)(i - (float)player.AbsoluteAmountYOffset) * ScaleCoefficent);
+
+                        }
+                        else if (Models.ContainsKey((Map.Objects)map.GameArea[i, j]) &&
+                        (Map.Objects)map.GameArea[i, j] != Map.Objects.Grass &&
+                        (Map.Objects)map.GameArea[i, j] != Map.Objects.Player)
+                        {
+
+                            g.DrawImage(Models[(Map.Objects)map.GameArea[i, j]],
+                                    (int)(j - (float)player.AbsoluteAmountXOffset) * ScaleCoefficent,
+                                   (int)(i - (float)player.AbsoluteAmountYOffset) * ScaleCoefficent,
+                                    (60 + 2 * (float)offsetForDrop) * ScaleCoefficent,
+                                        (50 + 2 * (float)offsetForDrop) * ScaleCoefficent);
+                        }
+                    }
+                }
+            }
+            return bitmap;
+        }
+        public static int ScaleCoefficent { get; set; } = 1;
         public  enum ProccessedElements { Heart};
         ///<summary> 
         ///    Метод для добавления текстур предварительно обработав их по размеру
@@ -33,15 +114,15 @@ namespace Game
             PaintEventHandler temp = (s, a) =>
             {
                 var g = a.Graphics;
-                g.FillRectangle(Brushes.Black, (coord.Item2 - (int)player.AbsoluteAmountXOffset) * window.Width / 600, 
-                    (coord.Item1 - (int)player.AbsoluteAmountYOffset + 10    ) * window.Height / 600, 50 * window.Width / 600, 
-                    10 * window.Height / 600);
+                g.FillRectangle(Brushes.Black, (coord.Item2 - (int)player.AbsoluteAmountXOffset) * ScaleCoefficent, 
+                    (coord.Item1 - (int)player.AbsoluteAmountYOffset + 10    ) * ScaleCoefficent, 50 * ScaleCoefficent, 
+                    10 * ScaleCoefficent);
                 lock (map.Object)
                 {
                     if(map.Object.ContainsKey(coord) && (int)map.Object[coord].HP != 0)
-                        g.FillRectangle(Brushes.Red, (coord.Item2 - (int)player.AbsoluteAmountXOffset) * window.Width / 600,
-                            (coord.Item1 - (int)player.AbsoluteAmountYOffset + 10) * window.Height / 600,
-                            50 * window.Width / 600 * (int)map.Object[coord].HP / 100, 10 * window.Height / 600);
+                        g.FillRectangle(Brushes.Red, (coord.Item2 - (int)player.AbsoluteAmountXOffset) * ScaleCoefficent,
+                            (coord.Item1 - (int)player.AbsoluteAmountYOffset + 10) * ScaleCoefficent,
+                            50 * ScaleCoefficent * (int)map.Object[coord].HP / 100, 10 * ScaleCoefficent);
                 }
             };
             window.Paint += temp;
@@ -50,7 +131,7 @@ namespace Game
             {
                 window.Paint -= temp;
                 window.Invalidate();
-                timer.Stop();
+                timer.Dispose();
             };
             if (ActiveTimers.Count > 0) {
                 var temporary = ActiveTimers.Dequeue();
@@ -71,72 +152,20 @@ namespace Game
         };
         public static void AddDrawMapEnviroment(Map map, MyFrom window, Player player)
         {
-            var timer = new Timer() { Interval = 500 };
-
-            var timeVariable = (int)Math.Sin(DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond);
-            timer.Tick += (s, e) =>
+            window.Paint +=  (s, e) =>
             {
-                timeVariable = (int)Math.Sin(timeVariable + 500);
-            };
-            timer.Start();
-            window.Paint += (s, e) =>
-            {
-                var length = map.GameArea.GetLength(0);
                 var g = e.Graphics;
-                var startX = player.Location.X - 600 > 0 ? player.Location.X - 600 : 0;
-                var startY = player.Location.Y - 600 > 0 ? player.Location.Y - 600 : 0;
-                var endX = player.Location.X + 600 >= length ? length - 1 : player.Location.X + 600;
-                var endY = player.Location.Y + 600 >= length ? length - 1 : player.Location.Y + 600;
-                for (int i = (int)startY; i < (int)endY; i++)
-                {
-                    for (int j = (int)startX; j < (int)endX; j++)
-                    {
-                        if (Models.ContainsKey((Map.Objects)map.GameArea[i, j]) &&
-                        (Map.Objects)map.GameArea[i, j] != Map.Objects.Grass &&
-                        (Map.Objects)map.GameArea[i, j] != Map.Objects.Player
-                        && (Map.Objects)map.GameArea[i, j] != Map.Objects.Wood &&
-                         (Map.Objects)map.GameArea[i, j] != Map.Objects.Diamond)
-                        {
-                            g.FillEllipse(Brushes.Black, (int)(j - (float)player.AbsoluteAmountXOffset)
-                                * window.Size.Width / 600,
-                                 (int)(i - (float)player.AbsoluteAmountYOffset) * window.Size.Height / 600 +
-                                 50 * window.Size.Height / 550, 44 * window.Size.Width / 600,
-                                 10);
-                            g.DrawImage(Models[(Map.Objects)map.GameArea[i, j]],
-                                        (int)(j - (float)player.AbsoluteAmountXOffset) * window.Size.Width / 600,
-                                       (int)(i - (float)player.AbsoluteAmountYOffset) * window.Size.Height / 600,
-                                        50 * window.Size.Width / 700, 50 * window.Size.Height / 500);
-                        }
-                        else if ((Map.Objects)map.GameArea[i, j] == Map.Objects.Bullet)
-                        {
-                            var trackerSize = 10;
-                            g.DrawLine(new Pen(Brushes.Red, 5 * window.Width / 600), (int)(j - (float)player.AbsoluteAmountXOffset) * window.Size.Width / 600,
-                                  (int)(i - (float)player.AbsoluteAmountYOffset) * window.Size.Height / 600,
-                                  (int)(j - (float)player.AbsoluteAmountXOffset + trackerSize) * window.Size.Width / 600,
-                                  (int)(i - (float)player.AbsoluteAmountYOffset) * window.Size.Height / 600
-                                  );
-                        }
-                        else if (Models.ContainsKey((Map.Objects)map.GameArea[i, j]) &&
-                        (Map.Objects)map.GameArea[i, j] != Map.Objects.Grass &&
-                        (Map.Objects)map.GameArea[i, j] != Map.Objects.Player)
-                        {
-                            g.DrawImage(Models[(Map.Objects)map.GameArea[i, j]],
-                                       (int)(j - (float)player.AbsoluteAmountXOffset) * window.Size.Width / 600,
-                                      (int)(i - (float)player.AbsoluteAmountYOffset) * window.Size.Height / 600,
-                                       (60 + 500 * timeVariable) * window.Size.Width / 700,
-                                           (50 + 20 * timeVariable) * window.Size.Height / 500);
-                        }
-                    }
-                }
+                var result = RenderOnOtherThread(map, window, player);
+                g.DrawImage(result, 0, 0, window.Width, window.Height);
             };
         }
         public static void AddDrawMap(Map map, MyFrom window)
         {
-            Bitmap grassTexture = new Bitmap(100 * window.Width / 600, 100 * window.Height / 600);
+            Bitmap grassTexture = new Bitmap(100, 100);
             using (var graph = Graphics.FromImage(grassTexture))
             {
                 graph.DrawImage(Image.FromFile("./textures/grass.jpg"), 
-                    new Rectangle(0, 0, 100 * window.Width / 600, 100 * window.Height / 600));
+                    new Rectangle(0, 0, 100, 100));
             }
             var amountY = (int)Math.Floor((double)window.Size.Height / grassTexture.Size.Height) + 1;
             var amountX = (int)Math.Floor((double)window.Size.Width / grassTexture.Size.Width) + 1;
@@ -152,8 +181,8 @@ namespace Game
                 {
                     for(int j=0; j < amountX;j++)
                     {
-                            g.DrawImage(grassTexture, j * grassTexture.Size.Height,
-                           i * grassTexture.Size.Width);
+                            g.DrawImage(grassTexture, j * grassTexture.Size.Width,
+                           i * grassTexture.Size.Height);
                     }
                 }
             };
@@ -162,18 +191,18 @@ namespace Game
         {
             window.Paint += (sender, args) =>
             {
-                    var playerTexture = new Bitmap(50 * window.Size.Width / 700, 50 * window.Size.Height / 500);
+                    var playerTexture = new Bitmap(50 * ScaleCoefficent, 50 * ScaleCoefficent);
                     using (var graph = Graphics.FromImage(playerTexture))
                     {
                     lock (player.CurrentTexture)
                     {
-                        graph.DrawImage(player.CurrentTexture, 0, 0, 50 * window.Size.Width / 700, 50 * window.Size.Height / 500);
+                        graph.DrawImage(player.CurrentTexture, 0, 0, 50 * ScaleCoefficent, 50 * ScaleCoefficent);
                     }
                     }
                     var g = args.Graphics;
                     g.DrawImage(playerTexture, ((float)player.Location.X  - (float)player.AbsoluteAmountXOffset)
-                        * window.Size.Width / 600,
-                         ((float)player.Location.Y -(float)player.AbsoluteAmountYOffset) * window.Size.Height / 600);
+                        * ScaleCoefficent,
+                         ((float)player.Location.Y -(float)player.AbsoluteAmountYOffset) * ScaleCoefficent);
                 //window.Text = $" x is {player.Location} and y is {player.AbsoluteAmountXOffset}";
             };
         }

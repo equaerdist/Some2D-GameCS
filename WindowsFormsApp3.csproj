@@ -56,7 +56,6 @@
       <DependentUpon>Paths.resx</DependentUpon>
     </Compile>
     <Compile Include="Tools.cs" />
-    <Compile Include="UserController.cs" />
     <Compile Include="ViewControllers.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>

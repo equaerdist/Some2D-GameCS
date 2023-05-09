@@ -369,7 +369,7 @@ namespace Game
         }
 
 
-        public void DoStep(Tools.Axe axis)
+        public void DoStep(Tools.Axe axis, MyFrom window)
         {
             var counter = 1;
             var lastDate = DateTime.Now;
@@ -388,9 +388,7 @@ namespace Game
                             CurrentMap.StateChanged(cache);
                             StateChanged();
                         }
-                        if (Location.Y - 200 -  AbsoluteAmountYOffset < 0 || 
-                            Location.Y - AbsoluteAmountYOffset + 200 >= 600)
-                            AbsoluteAmountYOffset = Location.Y + 200 - 600;
+                        ViewControllers.CountNewYOffset(this, window);
                         countNewEnergy(axis);
                         Thread.Sleep(100);
                     }
@@ -417,8 +415,7 @@ namespace Game
                             CurrentTexture = temporary;
                             StateChanged();
                         }
-                        if (Location.X  - 200 - AbsoluteAmountXOffset < 0 || Location.X + 200 - AbsoluteAmountXOffset >= 600)
-                            AbsoluteAmountXOffset = Location.X + 200 - 600;
+                        ViewControllers.CountNewXOffset(this, window);
                         countNewEnergy(axis);
                         Thread.Sleep(50);
                     }
