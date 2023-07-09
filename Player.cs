@@ -17,17 +17,17 @@ using Timer = System.Windows.Forms.Timer;
 
 namespace Game
 {
-    public class Player
+    public class Player : Object
     {
         private double powerConsumptionPerOneCeil;
-
+        public bool IsAlive { get; private set; }
         public Inventory PlayerInventory { get; set; }
 
         private  double _absoluteAmountXOffset;
 
         private  double _absoluteAmountYOffset;
 
-
+        public bool IsOnline { get; set; }
         public  double AbsoluteAmountYOffset
         {
             get
@@ -59,8 +59,6 @@ namespace Game
                 else _absoluteAmountXOffset = 0;
             }
         }
-        public HealthPoint HP { get; set; }
-
         public int Energy { get; private set; }
 
         private Func<int, Timer> createTimer;
@@ -80,11 +78,24 @@ namespace Game
         public Vector Velocity { get; set; }
 
         public Mode SpeedMode { get; set; }
+        private Vector LastLocation = new Vector(300, 300);
 
         public enum HealthPoint { VeryLow, Low, Middle, Good, VeryGood};
 
         public Map CurrentMap { get; }
-
+        public override double HP
+        {
+            get
+            {
+                return _hp;
+            }
+            set
+            {
+                if (value > 100) _hp = 100;
+                else if (value < 0) { _hp = 0; IsAlive = false; }
+                else { _hp = value; }
+            }
+        }
         private void AddEnergy()
         {
             Energy = 100;
@@ -93,13 +104,23 @@ namespace Game
             {
                 if (SpeedMode == Mode.Slow) Energy += 1;
                 if (Energy > 100) Energy = 100;
+                if(CurrentMap.Object.ContainsKey(Tuple.Create((int)Location.Y, (int)Location.X)))
+                {
+                    HP = CurrentMap.Object[Tuple.Create((int)Location.Y, (int)Location.X)].HP;
+                }
+                else
+                {
+                    HP = 0;
+                    IsAlive = false;
+                }
                 StateChanged();
             };
             timer.Start();
         }
         public Player(Map map,Weapon weapon, double energyconsumption)
         {
-            HP = HealthPoint.VeryGood;
+            HP = 100;
+            IsAlive = true;
             createTimer = (time) => { return new Timer() { Interval = time }; };
             AbsoluteAmountXOffset = 0;
             AbsoluteAmountYOffset = 0;
@@ -146,7 +167,7 @@ namespace Game
             return (false, 0, switcher == -1 ? Direction.Left : Direction.Right, Tuple.Create(0, 0));
         }
 
-
+       
         private void DifferHP((bool Exists, int Range, Direction direction, Tuple<int, int>) result, MyFrom window)
         {
             if (result.Exists)
@@ -155,14 +176,8 @@ namespace Game
                 if (CurrentMap.Object.ContainsKey(result.Item4))
                 {
                     var damage = CurrentWeapon.Physic.FinallyDamage(result.Range);
-                    CurrentMap.Object[result.Item4].HP -= damage;
-                    if (CurrentMap.Object[result.Item4].HP == 0)
-                    {
-                        
-                            CurrentMap.Object.Remove(result.Item4);
-                            CurrentMap.SpawnRandomDrop(result.Item4);
-                    }
-                    else
+                    var drawOrNo = CurrentMap.DifferHp(result.Item4, new Object() { HP = CurrentMap.Object[result.Item4].HP - damage });
+                    if (drawOrNo)
                     {
                         window.BeginInvoke(new Action(() =>
                         {
@@ -173,8 +188,14 @@ namespace Game
                 }
             }
         }
-
-
+        private void UpdateInfoAboutMove()
+        {
+            var hp = CurrentMap.Object[Tuple.Create((int)LastLocation.Y, (int)LastLocation.X)].HP;
+            CurrentMap.Object.Remove(Tuple.Create((int)LastLocation.Y, (int)LastLocation.X));
+            var curLoc = new Vector(x: Location.X, y: Location.Y);
+            CurrentMap.Object[Tuple.Create((int)curLoc.Y, (int)curLoc.X)] = new Object() { HP = hp };
+            LastLocation = curLoc;
+        }
         private void takeItem(Tuple<int, int> coord)
         {
             var temp = new Random();
@@ -207,10 +228,9 @@ namespace Game
                     if (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond >
                         lastDate.Ticks / TimeSpan.TicksPerMillisecond + CurrentWeapon.Physic.VelocityIntervalInMillisecond)
                     {
-
-                        map[(int)currentLocation.Y, (int)bulletLocationX] = (byte)Map.Objects.Grass;
+                        CurrentMap.SetNewPosition(new Vector(bulletLocationX, currentLocation.Y), new Vector(
+                            bulletLocationX + CurrentWeapon.Physic.Velocity.X * switcher, currentLocation.Y), Map.Objects.Bullet);
                         bulletLocationX += CurrentWeapon.Physic.Velocity.X * switcher;
-                        map[(int)currentLocation.Y, (int)bulletLocationX] = (byte)Map.Objects.Bullet;
                         lastDate = DateTime.Now;
                         StateChanged();
                     }
@@ -371,57 +391,69 @@ namespace Game
 
         public void DoStep(Tools.Axe axis, MyFrom window)
         {
-            var counter = 1;
-            var lastDate = DateTime.Now;
-            switch (axis)
+            if (IsAlive)
             {
-                case Tools.Axe.Y:
-                    while (Velocity.Y != 0) {
-                        if (checkCollision(axis))
+                var counter = 1;
+                var lastDate = DateTime.Now;
+                switch (axis)
+                {
+                    case Tools.Axe.Y:
+                        while (Velocity.Y != 0)
                         {
-                            var cache = new Location();
-                            cache.Item1 = this.Location;
-                            this.Location += SpeedMode == Mode.Slow ? new Vector(0, Velocity.Y) : 
-                                new Vector(0, Velocity.Y) * 2;
-                            //window.BeginInvoke(new Action(() => window.Text = CurrentDirection.ToString()));
-                            cache.Item2 = this.Location;
-                            CurrentMap.StateChanged(cache);
-                            StateChanged();
+                            if (checkCollision(axis))
+                            {
+                                var cache = new Location();
+                                cache.Item1 = this.Location;
+
+                                this.Location += SpeedMode == Mode.Slow ? new Vector(0, Velocity.Y) :
+                                    new Vector(0, Velocity.Y) * 2;
+                                //window.BeginInvoke(new Action(() => window.Text = CurrentDirection.ToString()));
+                                cache.Item2 = this.Location;
+                                if (IsOnline) ServerController.StateChanged(Map.Objects.Player,
+                                    cache.Item2, cache.Item1);
+                                CurrentMap.StateChanged(cache);
+                                UpdateInfoAboutMove();
+                                
+                                StateChanged();
+                            }
+                            ViewControllers.CountNewYOffset(this, window);
+                            countNewEnergy(axis);
+                            Thread.Sleep(100);
                         }
-                        ViewControllers.CountNewYOffset(this, window);
-                        countNewEnergy(axis);
-                        Thread.Sleep(100);
-                    }
-                    break;
-                case Tools.Axe.X:
-                    while (Velocity.X != 0)
-                    {
-                        if ((int)(DateTime.Now - lastDate).TotalMilliseconds > 100)
+                        break;
+                    case Tools.Axe.X:
+                        while (Velocity.X != 0)
                         {
-                            counter++;
-                            lastDate = DateTime.Now;
-                            if (counter == 6) counter = 1;
+                            if ((int)(DateTime.Now - lastDate).TotalMilliseconds > 100)
+                            {
+                                counter++;
+                                lastDate = DateTime.Now;
+                                if (counter == 6) counter = 1;
+                            }
+                            if (checkCollision(axis))
+                            {
+                                var cache = new Location();
+                                cache.Item1 = this.Location;
+                                this.Location += SpeedMode == Mode.Slow ? new Vector(Velocity.X, 0) :
+                                    new Vector(Velocity.X, 0) * 3;
+                                cache.Item2 = this.Location;
+                                UpdateInfoAboutMove();
+                                CurrentMap.StateChanged(cache);
+                                if (IsOnline) ServerController.StateChanged(Map.Objects.Player,
+                                    cache.Item2, cache.Item1);
+                                Image temporary = Image.FromFile($"./textures/character{counter}.png");
+                                if (Velocity.X < 0) temporary.RotateFlip(RotateFlipType.RotateNoneFlipX);
+                                CurrentTexture = temporary;
+                                StateChanged();
+                            }
+                            ViewControllers.CountNewXOffset(this, window);
+                            countNewEnergy(axis);
+                            Thread.Sleep(50);
                         }
-                        if (checkCollision(axis))
-                        {
-                            var cache = new Location();
-                            cache.Item1 = this.Location;
-                            this.Location += SpeedMode == Mode.Slow ? new Vector(Velocity.X, 0) :
-                                new Vector(Velocity.X, 0) * 3;
-                            cache.Item2 = this.Location;
-                            CurrentMap.StateChanged(cache);
-                            Image temporary = Image.FromFile($"./textures/character{counter}.png");
-                            if (Velocity.X < 0) temporary.RotateFlip(RotateFlipType.RotateNoneFlipX);
-                            CurrentTexture = temporary;
-                            StateChanged();
-                        }
-                        ViewControllers.CountNewXOffset(this, window);
-                        countNewEnergy(axis);
-                        Thread.Sleep(50);
-                    }
-                    break;
+                        break;
+                }
+                SetDefaultPosition();
             }
-            SetDefaultPosition();
         }
     }
 }

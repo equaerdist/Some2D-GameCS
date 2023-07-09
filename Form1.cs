@@ -25,8 +25,8 @@ namespace Game
             DoubleBuffered= true;
             Size = new Size(600, 600);
             var map = new Map(Image.FromFile("./textures/grass.jpg"));
-            Action newThread = map.Initialize;
-            newThread.BeginInvoke(null, null);
+            Action<Vector> newThread = map.Initialize;
+            newThread.BeginInvoke(new Vector(ClientSize.Width / 2, ClientSize.Height / 2), null, null);
             //map.Initialize();
             var weapon = new Weapon(400, 100, 20, 300);
             var physicForWeapon = new Physics(weapon, new Vector(4, 0), 0.5, 10);
@@ -40,6 +40,7 @@ namespace Game
                 CurrentTexture = Image.FromFile("./textures/character.png")
 
             };
+            map.Object[Tuple.Create((int)player.Location.X, (int)player.Location.Y)] = new Object() { HP = ((int)player.HP + 20.00) * 3 };
             player.StateChanged += () =>
             {
                 this.Invalidate();
@@ -57,10 +58,14 @@ namespace Game
                 ViewControllers.CountNewXOffset(player, this);
                 Invalidate();
             };
+            var server = new Server(map);
             var playerInterface = new Interface(
                 ViewControllers.ProccessedElements.Heart, 
                 this, 
-                player);
+                player,
+                server
+                );
+            ServerController.ConnectedServer = server;
         }
     }
 }

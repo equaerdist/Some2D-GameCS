@@ -1,4 +1,5 @@
 ﻿using Game;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -23,11 +24,11 @@ namespace Game
         private List<Tuple<int, Map.Objects>> objects = new List<Tuple<int, Map.Objects>>();
         public int Width
         {
-            get { if (Table != null) return Table.Width; else throw new ArgumentNullException(); }
+            get { if (Table != null) return Table.Width; else return -1; }
         }
         public int Height
         {
-            get { if (Table != null) return Table.Height; else throw new ArgumentNullException(); }
+            get { if (Table != null) return Table.Height; else return -1; }
         }
         public Inventory(Player player)
         {
@@ -36,6 +37,7 @@ namespace Game
         }
         private TableLayoutPanel Table;
         public int Count { get { return objects.Count; } }
+        [JsonIgnore]
         public Player Owner { get; private set; }
         public int AmountItemsOnPage { get; }
         public bool IsShowed { get; private set; } = false;
@@ -100,10 +102,7 @@ namespace Game
             }
             Table.AutoScroll = true;
             Table.GrowStyle = TableLayoutPanelGrowStyle.AddRows;
-            Table.Disposed += (s, e) =>
-            {
-                Table.Controls.Clear();
-            };
+            
         }
         public void Add(Tuple<int, Map.Objects> objectItem)
         {

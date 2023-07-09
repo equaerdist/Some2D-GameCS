@@ -8,14 +8,15 @@ namespace Game
 {
     public class Object
     {
-        private double _hp;
-        public double HP
+        protected double _hp;
+        public virtual double HP
         {
             get
             { return _hp; }
             set
             {
                 if (value < 0) _hp = 0;
+                else if(value > 100) _hp = 100;
                 else _hp = value;
             }
         }
