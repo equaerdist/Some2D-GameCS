@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -31,6 +32,7 @@ namespace Game
     }
     public class Physics
     {
+        [JsonIgnore]
         public Weapon ForWeapon { get; }
         public Vector Velocity { get; }
         public double DamageDownCoefficentPerSingleRange { get; }

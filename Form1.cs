@@ -21,43 +21,51 @@ namespace Game
         public Timer timer { get; set; }
         public MyFrom()
         {
-            this.SizeChanged += (s, e) =>
-            {
-                Invalidate();
-            };
             KeyPreview= true;
             DoubleBuffered= true;
             Size = new Size(600, 600);
             var map = new Map(Image.FromFile("./textures/grass.jpg"));
-            Action newThread = map.Initialize;
-            newThread.BeginInvoke(null, null);
+            Action<Vector> newThread = map.Initialize;
+            newThread.BeginInvoke(new Vector(ClientSize.Width / 2, ClientSize.Height / 2), null, null);
             //map.Initialize();
             var weapon = new Weapon(400, 100, 20, 300);
             var physicForWeapon = new Physics(weapon, new Vector(4, 0), 0.5, 10);
             weapon.Physic= physicForWeapon;
+           
+
             var player = new Player(map, weapon, 0.2)
             {
                 Location = new Vector(ClientSize.Width / 2, ClientSize.Height / 2),
                 Velocity = new Vector(),
                 CurrentTexture = Image.FromFile("./textures/character.png")
+
             };
+            map.Object[Tuple.Create((int)player.Location.X, (int)player.Location.Y)] = new Object() { HP = ((int)player.HP + 20.00) * 3 };
             player.StateChanged += () =>
             {
                 this.Invalidate();
             };
+
             var inventory = new Inventory(player);
             player.PlayerInventory = inventory;
-            var playerInterface = new Interface(
-                ViewControllers.ProccessedElements.Heart, 
-                this, 
-                player);
             ViewControllers.AddDrawMap(map, this);
             ViewControllers.AddDrawMapEnviroment(map, this, player);
             ViewControllers.AddDrawPlayer(player, this);
-            UserController.AddPlayerManagingKeys(this, player);
             ViewControllers.AddProcessedTextures(player, this);
-            UserController.AddInterfaceManagingKeys(playerInterface);
-            playerInterface.HideOrShow();
+            this.SizeChanged += (s, e) =>
+            {
+                ViewControllers.CountNewYOffset(player, this);
+                ViewControllers.CountNewXOffset(player, this);
+                Invalidate();
+            };
+            var server = new Server(map);
+            var playerInterface = new Interface(
+                ViewControllers.ProccessedElements.Heart, 
+                this, 
+                player,
+                server
+                );
+            ServerController.ConnectedServer = server;
         }
     }
 }
